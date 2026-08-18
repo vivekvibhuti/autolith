@@ -94,3 +94,52 @@ jobs:
             dist/autolith-"$GITHUB_REF_NAME"-arm64-darwin.tar.gz \
             dist/autolith-"$GITHUB_REF_NAME"-arm64-darwin.tar.gz.sha256 \
             --clobber
+
+  package-linux-aarch64:
+    name: Package Linux aarch64
+    needs: publish-metadata
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap build-essential cargo clisp \
+            cmake curl git libicu-dev libssl-dev libzstd-dev pkg-config rustc
+
+      - name: Build pinned SBCL release runtime
+        run: |
+          runtime_version=$(tr -d '[:space:]' < sbcl.version)
+          data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+          runtime_root="$data_home/autolith/runtimes/$runtime_version"
+          mkdir -p "$runtime_root"
+          ./script/build-release-runtime "$runtime_root/installation"
+
+      - name: Install Quicklisp
+        run: |
+          runtime_version=$(tr -d '[:space:]' < sbcl.version)
+          data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+          runtime_root="$data_home/autolith/runtimes/$runtime_version"
+          curl -O https://beta.quicklisp.org/quicklisp.lisp
+          "$runtime_root/installation/bin/sbcl" --noinform --non-interactive \
+            --load quicklisp.lisp \
+            --eval '(quicklisp-quickstart:install :path "~/quicklisp")'
+
+      - name: Bootstrap release dependencies
+        run: |
+          ./script/bootstrap
+
+      - name: Build Linux aarch64 release archive
+        run: |
+          ./script/build-release dist/
+
+      - name: Upload Linux aarch64 release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/autolith-"$GITHUB_REF_NAME"-aarch64-linux.tar.gz \
+            dist/autolith-"$GITHUB_REF_NAME"-aarch64-linux.tar.gz.sha256 \
+            --clobber
