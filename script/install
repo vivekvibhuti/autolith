@@ -119,16 +119,18 @@ os=$(uname -s)
 arch=$(uname -m)
 if [ "$os" = Linux ] && [ "$arch" = x86_64 ]; then
   platform=x86_64-linux
+elif [ "$os" = Linux ] && { [ "$arch" = aarch64 ] || [ "$arch" = arm64 ]; }; then
+  platform=aarch64-linux
 elif [ "$os" = Darwin ] && [ "$arch" = arm64 ]; then
   platform=arm64-darwin
 else
-  fail "binary releases currently support Linux x86-64 and macOS arm64 only."
+  fail "binary releases currently support Linux x86-64, Linux aarch64, and macOS arm64 only."
 fi
 
 required_commands="bash curl git grep openssl tar"
-if [ "$platform" = x86_64-linux ]; then
-  required_commands="$required_commands bwrap"
-fi
+case $platform in
+  *-linux) required_commands="$required_commands bwrap" ;;
+esac
 for command in $required_commands; do
   command -v "$command" >/dev/null 2>&1 ||
     fail "$command is required. Nix is the recommended installation path when system dependencies are unavailable."

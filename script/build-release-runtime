@@ -28,21 +28,22 @@ launcher_path=$(resolve_path "${BASH_SOURCE[0]}")
 source_root=$(CDPATH= cd -P -- "$(dirname -- "$launcher_path")/.." && pwd)
 installation=${1:?usage: build-release-runtime INSTALLATION}
 bootstrap_version=2.4.0
+bootstrap_from_source=false
 
 if [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]]; then
   bootstrap_arch="x86-64-linux"
   bootstrap_sha256=50afb9765d6a2f937f609ac33ebe553326347aef23eddd49c46d76456a5b3095
+elif [[ $(uname -s) == Linux && ( $(uname -m) == aarch64 || $(uname -m) == arm64 ) ]]; then
+  bootstrap_from_source=true
 elif [[ $(uname -s) == Darwin && $(uname -m) == arm64 ]]; then
   bootstrap_arch="arm64-darwin"
   bootstrap_sha256=1d01fac2d9748f769c9246a0a11a2c011d7843337f8f06ca144f5a500e10c117
 else
-  printf 'build-release-runtime currently supports Linux x86-64 and macOS arm64.\n' >&2
+  printf 'build-release-runtime currently supports Linux x86-64, Linux aarch64, and macOS arm64.\n' >&2
   exit 1
 fi
 
 temporary_root=$(mktemp -d)
-bootstrap_archive=$temporary_root/sbcl-$bootstrap_version-$bootstrap_arch-binary.tar.bz2
-bootstrap_source=$temporary_root/sbcl-$bootstrap_version-$bootstrap_arch
 bootstrap_installation=$temporary_root/bootstrap
 
 cleanup()
@@ -66,17 +67,42 @@ sha256_verify()
   fi
 }
 
-printf 'Installing the pinned SBCL %s bootstrap compiler.\n' "$bootstrap_version"
-curl --fail --location --show-error --retry 3 \
-  --proto '=https' --tlsv1.2 \
-  --output "$bootstrap_archive" \
-  "https://downloads.sourceforge.net/project/sbcl/sbcl/$bootstrap_version/sbcl-$bootstrap_version-$bootstrap_arch-binary.tar.bz2"
-sha256_verify "$bootstrap_sha256" "$bootstrap_archive"
-tar -xjf "$bootstrap_archive" -C "$temporary_root"
-(
-  cd "$bootstrap_source"
-  env -u SBCL_HOME sh install.sh --prefix="$bootstrap_installation"
-)
+if [[ $bootstrap_from_source == true ]]; then
+  bootstrap_source_version=$bootstrap_version
+  bootstrap_source_archive=$temporary_root/sbcl-$bootstrap_source_version-source.tar.bz2
+  bootstrap_source_dir=$temporary_root/sbcl-$bootstrap_source_version
+
+  command -v clisp >/dev/null 2>&1 ||
+    { printf 'clisp is required to bootstrap SBCL on this platform.\n' >&2; exit 1; }
+
+  printf 'Building SBCL %s bootstrap compiler from source.\n' "$bootstrap_source_version"
+  curl --fail --location --show-error --retry 3 \
+    --proto '=https' --tlsv1.2 \
+    --output "$bootstrap_source_archive" \
+    "https://downloads.sourceforge.net/project/sbcl/sbcl/$bootstrap_source_version/sbcl-$bootstrap_source_version-source.tar.bz2"
+  tar -xjf "$bootstrap_source_archive" -C "$temporary_root"
+  (
+    cd "$bootstrap_source_dir"
+    sh make.sh --xc-host='clisp -q' --prefix="$bootstrap_installation" \
+      --without-sb-core-compression
+    env -u SBCL_HOME sh install.sh --prefix="$bootstrap_installation"
+  )
+else
+  bootstrap_archive=$temporary_root/sbcl-$bootstrap_version-$bootstrap_arch-binary.tar.bz2
+  bootstrap_source=$temporary_root/sbcl-$bootstrap_version-$bootstrap_arch
+
+  printf 'Installing the pinned SBCL %s bootstrap compiler.\n' "$bootstrap_version"
+  curl --fail --location --show-error --retry 3 \
+    --proto '=https' --tlsv1.2 \
+    --output "$bootstrap_archive" \
+    "https://downloads.sourceforge.net/project/sbcl/sbcl/$bootstrap_version/sbcl-$bootstrap_version-$bootstrap_arch-binary.tar.bz2"
+  sha256_verify "$bootstrap_sha256" "$bootstrap_archive"
+  tar -xjf "$bootstrap_archive" -C "$temporary_root"
+  (
+    cd "$bootstrap_source"
+    env -u SBCL_HOME sh install.sh --prefix="$bootstrap_installation"
+  )
+fi
 
 env -u SBCL_HOME "$bootstrap_installation/bin/sbcl" \
   --noinform --no-userinit --no-sysinit \

@@ -283,13 +283,16 @@ rather than failing, so existence needs the following stat first."
       ((and (string-equal os "Linux")
             (member arch '("x86-64" "x86_64" "amd64") :test #'string=))
        "x86_64-linux")
+      ((and (string-equal os "Linux")
+            (member arch '("arm64" "aarch64") :test #'string=))
+       "aarch64-linux")
       ((and (string-equal os "Darwin")
             (member arch '("arm64" "aarch64") :test #'string=))
        "arm64-darwin")
       (t
        (error 'release-archive-error
               :stage ':prerequisites
-              :cause "Binary releases currently support Linux x86-64 and macOS arm64 only.")))))
+              :cause "Binary releases currently support Linux x86-64, Linux aarch64, and macOS arm64 only.")))))
 
 (-> release-archive--validate-platform () null)
 (defun release-archive--validate-platform ()
