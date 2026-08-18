@@ -1205,6 +1205,215 @@ esac
                    minimum)))))
     nil))
 
+(-> release-script-tests--install-linux-aarch64-host-tools (pathname) null)
+(defun release-script-tests--install-linux-aarch64-host-tools (directory)
+  "Install fixture commands reporting the aarch64-linux release target."
+  (let* ((directory (uiop:ensure-directory-pathname directory))
+         (uname (merge-pathnames "uname" directory))
+         (bwrap (merge-pathnames "bwrap" directory))
+         (chmod (merge-pathnames "chmod" directory))
+         (move (merge-pathnames "mv" directory)))
+    (release-script-tests--write-file
+     uname
+     "#!/bin/sh
+case ${1:-} in
+  -s) printf 'Linux\\n' ;;
+  -m) printf 'aarch64\\n' ;;
+  *) exit 64 ;;
+esac
+")
+    (release-script-tests--write-file bwrap "#!/bin/sh
+exit 0
+")
+    (release-script-tests--write-file chmod "#!/bin/sh
+recursive=
+if [ \"${1:-}\" = -R ]; then
+  recursive=-R
+  shift
+fi
+mode=$1
+shift
+if [ \"${1:-}\" = -- ]; then
+  shift
+fi
+if [ -n \"$recursive\" ]; then
+  exec /bin/chmod \"$recursive\" \"$mode\" \"$@\"
+else
+  exec /bin/chmod \"$mode\" \"$@\"
+fi
+")
+    (release-script-tests--write-file
+     move
+     "#!/bin/sh
+exec /bin/mv \"$@\"
+")
+    (dolist (p (list uname bwrap chmod move))
+      (release-script-tests--chmod "755" p)))
+  nil)
+
+(-> release-script-tests--launcher-linux-aarch64 (pathname pathname) null)
+(defun release-script-tests--launcher-linux-aarch64 (source-root root)
+  "Exercise aarch64-linux packaged launcher validation and its machine-readable probe."
+  (let* ((release-root
+           (merge-pathnames
+            (format nil "autolith-aarch64-launcher-v~A/"
+                    *release-script-tests-version*)
+            root))
+         (launcher
+           (merge-pathnames "bin/autolith" release-root))
+         (host-bin (merge-pathnames "aarch64-host-bin/" root))
+         (path (format nil "~A:~A"
+                       (string-right-trim "/" (namestring host-bin))
+                       (or (uiop:getenv "PATH") "")))
+         (environment
+           (list "AUTOLITH_NO_UPDATE_CHECK=1"
+                 (format nil "PATH=~A" path))))
+    (release-script-tests--install-linux-aarch64-host-tools host-bin)
+    (release-script-tests--make-release source-root release-root)
+    (let ((output
+            (release-script-tests--run
+             (list (namestring launcher) "--autolith-release-probe")
+             :environment environment)))
+      (dolist (line
+               (list
+                (format nil "version=~A" *release-script-tests-version*)
+                (format nil "tag=v~A" *release-script-tests-version*)
+                (format nil "commit=~A" *release-script-tests-commit*)
+                (format nil "source=~A"
+                        (string-right-trim
+                         "/"
+                         (namestring
+                          (truename
+                           (merge-pathnames "libexec/autolith/" release-root)))))
+                (format nil "runtime=~A"
+                        (namestring
+                         (truename
+                          (merge-pathnames "runtime/bin/sbcl" release-root))))))
+        (test-assert (find line
+                           (uiop:split-string output
+                                              :separator '(#\Newline #\Return))
+                           :test #'string=)
+                     (format nil "aarch64-linux release probe reports ~A" line))))
+    (let ((library
+            (merge-pathnames "lib/libcolorlisp-tree-sitter.so"
+                             release-root)))
+      (delete-file library)
+      (multiple-value-bind (output error-output status)
+          (release-script-tests--run
+           (list (namestring launcher) "--autolith-release-probe")
+           :environment environment
+           :ignore-error-status t
+           :output nil)
+        (declare (ignore output error-output))
+        (test-assert (not (eql status 0))
+                     "the aarch64-linux release launcher requires its private syntax library"))
+      (release-script-tests--write-file library ""))
+    (release-script-tests--record
+     (merge-pathnames "RELEASE" release-root)
+     "v0.12.0")
+    (multiple-value-bind (output error-output status)
+        (release-script-tests--run
+         (list (namestring launcher) "--autolith-release-probe")
+         :environment environment
+         :ignore-error-status t)
+      (declare (ignore output))
+      (test-assert
+       (and (not (eql status 0))
+            (search "RELEASE has an inconsistent tag." error-output))
+       "the aarch64-linux release launcher rejects mismatched RELEASE metadata"))
+    (delete-file (merge-pathnames "RELEASE" release-root)))
+  nil)
+
+(-> release-script-tests--installer-linux-aarch64 (pathname pathname) null)
+(defun release-script-tests--installer-linux-aarch64 (source-root root)
+  "Exercise aarch64-linux binary installer download, verification, and link updates."
+  (let* ((tag (format nil "v~A" *release-script-tests-version*))
+         (release-name
+           (format nil "autolith-~A-aarch64-linux" tag))
+         (release-root
+           (merge-pathnames
+            (format nil "autolith-aarch64-v~A/" *release-script-tests-version*)
+            root))
+         (fixture-root (merge-pathnames "fixture-aarch64/" root))
+         (fixture-source (merge-pathnames "fixture-aarch64-source/" root))
+         (fixture-bin (merge-pathnames "fixture-aarch64-bin/" root))
+         (fixture-release
+           (merge-pathnames (format nil "~A/" release-name) fixture-source))
+         (archive
+           (merge-pathnames (format nil "~A.tar.gz" release-name) fixture-root))
+         (checksum
+           (merge-pathnames (format nil "~A.tar.gz.sha256" release-name)
+                            fixture-root))
+         (install-root (merge-pathnames "aarch64-installation/" root))
+         (bin-directory (merge-pathnames "aarch64-bin/" root))
+         (curl (merge-pathnames "curl" fixture-bin))
+         (installer (merge-pathnames "script/install" source-root)))
+    (release-script-tests--make-release source-root release-root)
+    (uiop:ensure-all-directories-exist
+     (list fixture-root fixture-source fixture-bin fixture-release))
+    (release-script-tests--install-linux-aarch64-host-tools fixture-bin)
+    (release-script-tests--run
+     (list "cp" "-a" (format nil "~A." (namestring release-root))
+           (namestring fixture-release))
+     :output nil)
+    (release-script-tests--chmod "a-w" fixture-release)
+    (release-script-tests--run
+     (list "tar" "-czf" (namestring archive)
+           "-C" (namestring fixture-source) release-name)
+     :output nil)
+    (if (release-archive--command-pathname "sha256sum")
+        (release-script-tests--run
+         (list "sha256sum" (file-namestring archive))
+         :directory fixture-root
+         :output checksum)
+        (let ((output
+                (release-script-tests--run
+                 (list "shasum" "-a" "256" (file-namestring archive))
+                 :directory fixture-root
+                 :output ':string)))
+          (release-script-tests--write-file checksum output)))
+    (release-script-tests--write-file
+     curl (release-script-tests--fixture-curl))
+    (release-script-tests--chmod "755" curl)
+    (let* ((path (format nil "~A:~A"
+                         (string-right-trim "/" (namestring fixture-bin))
+                         (or (uiop:getenv "PATH") "")))
+           (base-environment
+             (list
+              (format nil "PATH=~A" path)
+              (format nil "AUTOLITH_TEST_RELEASE_FIXTURE=~A"
+                      (namestring fixture-root))
+              "AUTOLITH_RELEASE_BASE_URL=https://example.invalid"
+              (format nil "AUTOLITH_INSTALL_ROOT=~A"
+                      (string-right-trim "/" (namestring install-root)))
+              (format nil "AUTOLITH_BIN_DIR=~A"
+                      (string-right-trim "/" (namestring bin-directory))))))
+      (release-script-tests--run
+       (list (namestring installer) "--version" tag)
+       :environment base-environment
+       :output nil)
+      (test-assert
+       (probe-file
+        (merge-pathnames (format nil "releases/~A/bin/autolith" tag)
+                         install-root))
+       "the aarch64-linux installer publishes the requested release")
+      (test-assert
+       (string= (release-script-tests--readlink
+                 (merge-pathnames "current" install-root))
+                (format nil "releases/~A" tag))
+       "the aarch64-linux installer selects the requested version")
+      (test-assert
+       (string= (release-script-tests--readlink
+                 (merge-pathnames "autolith" bin-directory))
+                (namestring (merge-pathnames "current/bin/autolith"
+                                             install-root)))
+       "the aarch64-linux installer publishes the user command link")
+      (release-script-tests--run
+       (list (namestring installer) "--version" tag)
+       :environment base-environment
+       :output nil)))
+  nil)
+
 (-> test-release-scripts () null)
 (defun test-release-scripts ()
   "Test shell bootstrap boundaries through Common Lisp fixtures."
@@ -1221,8 +1430,10 @@ esac
            (release-script-tests--source-launcher source-root root)
            (release-script-tests--launcher source-root root)
            (release-script-tests--launcher-darwin source-root root)
+           (release-script-tests--launcher-linux-aarch64 source-root root)
            (release-script-tests--update-handoff source-root root)
            (release-script-tests--installer source-root root)
-           (release-script-tests--installer-darwin source-root root))
+           (release-script-tests--installer-darwin source-root root)
+           (release-script-tests--installer-linux-aarch64 source-root root))
       (release-script-tests--cleanup root)))
   nil)

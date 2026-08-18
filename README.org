@@ -42,11 +42,11 @@ but it is pretty close to a Lisp Machine.
 
 * Install
 
-Autolith supports Linux x86-64 and macOS arm64 via standalone binary releases
+Autolith supports Linux x86-64, Linux aarch64, and macOS arm64 via standalone binary releases
 and Nix.
 
 The curl-into-sh installer installs or updates the packaged release for your
-platform (Linux x86-64 and macOS arm64). Inspect the
+platform (Linux x86-64, Linux aarch64, and macOS arm64). Inspect the
 [[https://sh.lambda-symbolics.com/autolith][installer script]] before piping it into a shell, or trust us with your life.
 
 #+BEGIN_SRC sh
