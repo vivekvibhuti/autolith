@@ -182,6 +182,7 @@ case $os in
   Linux)
     case $arch in
       x86_64|amd64) platform=x86_64-linux ;;
+      aarch64|arm64) platform=aarch64-linux ;;
     esac
     ;;
   Darwin)
@@ -206,7 +207,7 @@ case $os in
     ;;
 esac
 [[ -n $platform ]] ||
-  fail "binary releases currently support Linux x86-64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."
+  fail "binary releases currently support Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."
 if [[ $platform == arm64-darwin ]]; then
   fff_library=$release_root/lib/libfff_c.dylib
   colorlisp_library=$release_root/lib/libcolorlisp-tree-sitter.dylib
@@ -228,13 +229,13 @@ semantic_version_valid_p "$release_version" || fail "RELEASE has an invalid vers
 [[ -f $source_root/autolith.asd && -f $source_root/.qlot/setup.lisp ]] ||
   fail "the bundled Autolith source or dependencies are missing."
 [[ -x $source_root/script/install ]] || fail "the bundled installer is missing."
-if [[ $platform == x86_64-linux ]]; then
+if [[ $platform == *-linux ]]; then
   [[ -x $sandbox_helper ]] || fail "the private sandbox helper is missing."
 fi
 [[ -f $fff_library ]] || fail "the private search library is missing."
 [[ -f $colorlisp_library ]] || fail "the private syntax library is missing."
 command -v git >/dev/null 2>&1 || fail "Git is required."
-if [[ $platform == x86_64-linux ]]; then
+if [[ $platform == *-linux ]]; then
   command -v bwrap >/dev/null 2>&1 || fail "Bubblewrap is required."
 fi
 
@@ -260,7 +261,7 @@ export AUTOLITH_FFF_LIBRARY=$fff_library
 export COLORLISP_NATIVE_LIBRARY=$colorlisp_library
 export AUTOLITH_ACTIVE_CORE=$active_core
 export AUTOLITH_RECOVERY_CORE=$recovery_core
-if [[ $platform == x86_64-linux ]]; then
+if [[ $platform == *-linux ]]; then
   export CL_EXEC_SANDBOX_BWRAP
   CL_EXEC_SANDBOX_BWRAP=$(command -v bwrap)
   export CL_EXEC_SANDBOX_HELPER=$sandbox_helper
