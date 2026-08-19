@@ -226,7 +226,9 @@ rather than failing, so existence needs the following stat first."
    (list "env"
          "GIT_CONFIG_NOSYSTEM=1"
          "GIT_CONFIG_GLOBAL=/dev/null"
-         "git" "-C" (namestring source-root))
+         "git"
+         "-c" "safe.directory=*"
+         "-C" (string-right-trim "/" (namestring source-root)))
    arguments))
 
 (-> release-archive--create-source-identity (pathname string string) null)
@@ -271,7 +273,9 @@ rather than failing, so existence needs the following stat first."
                     "TZ=UTC"
                     (format nil "GIT_AUTHOR_DATE=@~A +0000" commit-time)
                     (format nil "GIT_COMMITTER_DATE=@~A +0000" commit-time)
-                    "git" "-C" (namestring source-root)
+                    "git"
+                    "-c" "safe.directory=*"
+                    "-C" (string-right-trim "/" (namestring source-root))
                     "commit-tree" tree
                     "-m" (format nil "Autolith ~A source" tag)))
              :output ':string
@@ -305,6 +309,9 @@ rather than failing, so existence needs the following stat first."
       ((and (string-equal os "Linux")
             (release-archive--x86-64-architecture-p architecture))
        "x86_64-linux")
+      ((and (string-equal os "Linux")
+            (member architecture '("arm64" "aarch64") :test #'string=))
+       "aarch64-linux")
       ((and (string-equal os "Darwin")
             (member architecture '("arm64" "aarch64") :test #'string=))
        "arm64-darwin")
@@ -320,7 +327,7 @@ rather than failing, so existence needs the following stat first."
       (t
        (error 'release-archive-error
               :stage ':prerequisites
-              :cause "Binary releases currently support Linux x86-64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only.")))))
+              :cause "Binary releases currently support Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only.")))))
 
 (-> release-archive--platform () string)
 (defun release-archive--platform ()

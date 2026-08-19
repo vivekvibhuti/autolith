@@ -131,7 +131,7 @@
             (fail "usage: build-release-runtime.lisp SOURCE INSTALLATION TEMP BOOTSTRAP"))
             (unless (or (and (string-equal (software-type) "Linux")
                              (member (string-downcase (machine-type))
-                                     '("x86-64" "x86_64" "amd64")
+                                     '("x86-64" "x86_64" "amd64" "aarch64" "arm64")
                                      :test #'string=))
                         (and (string-equal (software-type) "Darwin")
                              (member (string-downcase (machine-type))
@@ -143,7 +143,7 @@
                              (member (string-downcase (machine-type))
                                      '("x86-64" "x86_64" "amd64")
                                      :test #'string=)))
-              (fail "release runtimes currently support Linux x86-64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."))
+              (fail "release runtimes currently support Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."))
           (let* ((runtime-version
                    (trimmed-file (merge-pathnames "sbcl.version" source-root)))
                  (runtime-sha256
@@ -165,6 +165,10 @@
               (unless (or (member (software-type)
                                   '("FreeBSD" "NetBSD" "OpenBSD")
                                   :test #'string-equal)
+                          (and (string-equal (software-type) "Linux")
+                               (member (string-downcase (machine-type))
+                                       '("aarch64" "arm64")
+                                       :test #'string=))
                           (string= (runtime-version bootstrap-command) "2.4.0"))
                 (fail "the bootstrap compiler does not report version 2.4.0."))
             (format t "~&Building the pinned SBCL ~A release runtime.~%"
