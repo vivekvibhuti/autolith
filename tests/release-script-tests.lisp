@@ -1397,6 +1397,8 @@ esac
   (dolist (case '(("Linux" "x86-64" "x86_64-linux")
                   ("Linux" "x86_64" "x86_64-linux")
                   ("Linux" "amd64" "x86_64-linux")
+                  ("Linux" "aarch64" "aarch64-linux")
+                  ("Linux" "arm64" "aarch64-linux")
                   ("Darwin" "arm64" "arm64-darwin")
                   ("Darwin" "aarch64" "arm64-darwin")
                   ("FreeBSD" "amd64" "x86_64-freebsd")

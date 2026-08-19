@@ -68,6 +68,54 @@ jobs:
             dist/autolith-"$GITHUB_REF_NAME"-x86_64-linux.tar.gz.sha256 \
             --clobber
 
+  package-linux-aarch64:
+    name: Package Linux aarch64
+    needs: publish-metadata
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: ubuntu:22.04
+    timeout-minutes: 90
+    steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+            bubblewrap build-essential ca-certificates cmake curl git \
+            libicu-dev libssl-dev libz-dev libzstd-dev pkg-config sbcl
+          mkdir -p -m 755 /etc/apt/keyrings
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
+            tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+          chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" |
+            tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes gh
+          git config --system --add safe.directory '*'
+
+      - uses: actions/checkout@v5
+
+      - name: Configure safe directory
+        run: git config --global --add safe.directory '*'
+
+      - name: Install Rust
+        run: |
+          curl --fail --location --show-error --retry 3 --proto '=https' --tlsv1.2 \
+            https://sh.rustup.rs |
+            sh -s -- -y --default-toolchain 1.97.1 --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Package Linux release
+        run: ./script/ci-package-release dist/
+
+      - name: Upload Linux release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/autolith-"$GITHUB_REF_NAME"-aarch64-linux.tar.gz \
+            dist/autolith-"$GITHUB_REF_NAME"-aarch64-linux.tar.gz.sha256 \
+            --clobber
+
   package-macos-arm64:
     name: Package macOS arm64
     needs: publish-metadata

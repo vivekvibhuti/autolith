@@ -39,6 +39,9 @@ case $os in
         bootstrap_arch=x86-64-linux
         bootstrap_sha256=50afb9765d6a2f937f609ac33ebe553326347aef23eddd49c46d76456a5b3095
         ;;
+      aarch64|arm64)
+        host_bootstrap=true
+        ;;
     esac
     ;;
   Darwin)
@@ -56,7 +59,7 @@ case $os in
     ;;
 esac
 if [[ $host_bootstrap != true && -z ${bootstrap_arch:-} ]]; then
-  printf 'build-release-runtime currently supports Linux x86-64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64.\n' >&2
+  printf 'build-release-runtime currently supports Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64.\n' >&2
   exit 1
 fi
 

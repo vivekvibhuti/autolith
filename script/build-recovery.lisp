@@ -48,7 +48,7 @@
                 (uiop:run-program
                  (append (list "git"
                                "-c" "safe.directory=*"
-                               "-C" (namestring source-root))
+                               "-C" (string-right-trim "/" (namestring source-root)))
                          arguments)
                  :output ':string
                  :error-output ':output)))
