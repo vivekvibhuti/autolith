@@ -36,8 +36,12 @@ case $os in
   Linux)
     case $arch in
       x86_64|amd64)
-        bootstrap_arch=x86-64-linux
-        bootstrap_sha256=50afb9765d6a2f937f609ac33ebe553326347aef23eddd49c46d76456a5b3095
+        if [[ ${AUTOLITH_HOST_BOOTSTRAP:-} == 1 || ${AUTOLITH_LIBC:-} == "musl" ]]; then
+          host_bootstrap=true
+        else
+          bootstrap_arch=x86-64-linux
+          bootstrap_sha256=50afb9765d6a2f937f609ac33ebe553326347aef23eddd49c46d76456a5b3095
+        fi
         ;;
       aarch64|arm64)
         host_bootstrap=true

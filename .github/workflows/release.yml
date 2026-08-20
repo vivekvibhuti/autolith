@@ -71,6 +71,8 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Package Linux release
+        env:
+          AUTOLITH_HOST_BOOTSTRAP: "1"
         run: ./script/ci-package-release dist/
 
       - name: Upload Linux release artifacts
@@ -119,6 +121,8 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Package Linux release
+        env:
+          AUTOLITH_HOST_BOOTSTRAP: "1"
         run: ./script/ci-package-release dist/
 
       - name: Upload Linux release artifacts
@@ -134,26 +138,18 @@ jobs:
     name: Package Linux x86-64 (musl)
     needs: publish-metadata
     runs-on: ubuntu-22.04
-    container:
-      image: alpine:latest
     timeout-minutes: 75
     steps:
-      - name: Install dependencies
-        run: |
-          apk add --no-cache bash build-base ca-certificates cmake curl git grep \
-            icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo github-cli
-          git config --system --add safe.directory '*'
-
       - uses: actions/checkout@v5
 
-      - name: Configure safe directory
-        run: git config --global --add safe.directory '*'
-
       - name: Package Linux musl release
-        env:
-          AUTOLITH_RELEASE_PLATFORM: x86_64-linux-musl
-          AUTOLITH_LIBC: musl
-        run: ./script/ci-package-release dist/
+        run: |
+          docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c "
+            apk add --no-cache bash build-base ca-certificates cmake curl git grep \
+              icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo && \
+            git config --global --add safe.directory '*' && \
+            AUTOLITH_RELEASE_PLATFORM=x86_64-linux-musl AUTOLITH_LIBC=musl AUTOLITH_HOST_BOOTSTRAP=1 ./script/ci-package-release dist/
+          "
 
       - name: Upload Linux musl release artifacts
         env:
@@ -168,26 +164,18 @@ jobs:
     name: Package Linux aarch64 (musl)
     needs: publish-metadata
     runs-on: ubuntu-24.04-arm
-    container:
-      image: alpine:latest
     timeout-minutes: 90
     steps:
-      - name: Install dependencies
-        run: |
-          apk add --no-cache bash build-base ca-certificates cmake curl git grep \
-            icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo github-cli
-          git config --system --add safe.directory '*'
-
       - uses: actions/checkout@v5
 
-      - name: Configure safe directory
-        run: git config --global --add safe.directory '*'
-
       - name: Package Linux musl release
-        env:
-          AUTOLITH_RELEASE_PLATFORM: aarch64-linux-musl
-          AUTOLITH_LIBC: musl
-        run: ./script/ci-package-release dist/
+        run: |
+          docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c "
+            apk add --no-cache bash build-base ca-certificates cmake curl git grep \
+              icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo && \
+            git config --global --add safe.directory '*' && \
+            AUTOLITH_RELEASE_PLATFORM=aarch64-linux-musl AUTOLITH_LIBC=musl AUTOLITH_HOST_BOOTSTRAP=1 ./script/ci-package-release dist/
+          "
 
       - name: Upload Linux musl release artifacts
         env:
