@@ -56,9 +56,11 @@ check_sha256()
 {
   check_checksum=$1
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum --check --status "$check_checksum"
+    sha256sum -c -s "$check_checksum" 2>/dev/null || \
+      sha256sum -c "$check_checksum" >/dev/null 2>&1
   elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 --check --status "$check_checksum"
+    shasum -a 256 -c -s "$check_checksum" 2>/dev/null || \
+      shasum -a 256 -c "$check_checksum" >/dev/null 2>&1
   elif command -v sha256 >/dev/null 2>&1; then
     check_expected=$(awk '{print $1}' "$check_checksum")
     check_file=$(awk '{print $2}' "$check_checksum")
