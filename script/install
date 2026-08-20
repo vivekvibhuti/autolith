@@ -102,13 +102,17 @@ while [ "$#" -gt 0 ]; do
       requested_tag=$2
       shift 2
       ;;
+    --musl)
+      musl_requested_p=true
+      shift
+      ;;
     --without-command-link)
       publish_command_p=false
       shift
       ;;
     --help)
       printf '%s\n' \
-        'usage: install [--version vMAJOR.MINOR.PATCH] [--without-command-link]' \
+        'usage: install [--version vMAJOR.MINOR.PATCH] [--musl] [--without-command-link]' \
         '' \
         'Install or update the Autolith binary release.'
       exit 0
@@ -151,6 +155,13 @@ case $os in
     esac
     ;;
 esac
+if [ "${musl_requested_p:-false}" = true ] || \
+   [ "${AUTOLITH_LIBC:-}" = "musl" ] || \
+   ( [ "$os" = "Linux" ] && command -v ldd >/dev/null 2>&1 && ldd /bin/sh 2>&1 | grep -iq "musl" ); then
+  case $platform in
+    *-linux) platform="${platform}-musl" ;;
+  esac
+fi
 [ -n "$platform" ] ||
   fail "binary releases currently support Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."
 

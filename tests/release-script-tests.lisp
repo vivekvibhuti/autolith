@@ -1411,6 +1411,21 @@ esac
       (test-assert
        (string= (release-archive--platform-id os architecture) expected)
        (format nil "~A/~A maps to ~A" os architecture expected))))
+  (let ((old-libc (uiop:getenv "AUTOLITH_LIBC")))
+    (unwind-protect
+         (progn
+           (sb-posix:setenv "AUTOLITH_LIBC" "musl" 1)
+           (test-assert
+            (string= (release-archive--platform-id "Linux" "x86_64")
+                     "x86_64-linux-musl")
+            "Linux/x86_64 with musl maps to x86_64-linux-musl")
+           (test-assert
+            (string= (release-archive--platform-id "Linux" "aarch64")
+                     "aarch64-linux-musl")
+            "Linux/aarch64 with musl maps to aarch64-linux-musl"))
+      (if old-libc
+          (sb-posix:setenv "AUTOLITH_LIBC" old-libc 1)
+          (sb-posix:unsetenv "AUTOLITH_LIBC"))))
   (dolist (case '(("Linux" "i686")
                   ("Darwin" "x86_64")
                   ("SunOS" "amd64")

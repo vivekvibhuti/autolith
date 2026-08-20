@@ -206,6 +206,12 @@ case $os in
     esac
     ;;
 esac
+if [[ "${AUTOLITH_LIBC:-}" == "musl" ]] || \
+   ( [[ "$os" == "Linux" ]] && command -v ldd >/dev/null 2>&1 && ldd /bin/sh 2>&1 | grep -iq "musl" ); then
+  case $platform in
+    *-linux) platform="${platform}-musl" ;;
+  esac
+fi
 [[ -n $platform ]] ||
   fail "binary releases currently support Linux x86-64, Linux aarch64, macOS arm64, FreeBSD x86-64, NetBSD x86-64, and OpenBSD x86-64 only."
 if [[ $platform == arm64-darwin ]]; then

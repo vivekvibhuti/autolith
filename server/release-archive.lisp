@@ -304,14 +304,15 @@ rather than failing, so existence needs the following stat first."
 (-> release-archive--platform-id (string string) string)
 (defun release-archive--platform-id (os architecture)
   "Return the canonical release platform identifier for OS and ARCHITECTURE."
-  (let ((architecture (string-downcase architecture)))
+  (let ((architecture (string-downcase architecture))
+        (musl-p (equal (uiop:getenv "AUTOLITH_LIBC") "musl")))
     (cond
       ((and (string-equal os "Linux")
             (release-archive--x86-64-architecture-p architecture))
-       "x86_64-linux")
+       (if musl-p "x86_64-linux-musl" "x86_64-linux"))
       ((and (string-equal os "Linux")
             (member architecture '("arm64" "aarch64") :test #'string=))
-       "aarch64-linux")
+       (if musl-p "aarch64-linux-musl" "aarch64-linux"))
       ((and (string-equal os "Darwin")
             (member architecture '("arm64" "aarch64") :test #'string=))
        "arm64-darwin")
@@ -332,7 +333,10 @@ rather than failing, so existence needs the following stat first."
 (-> release-archive--platform () string)
 (defun release-archive--platform ()
   "Return the canonical release platform identifier."
-  (release-archive--platform-id (software-type) (machine-type)))
+  (let ((configured (uiop:getenv "AUTOLITH_RELEASE_PLATFORM")))
+    (if (and configured (plusp (length configured)))
+        configured
+        (release-archive--platform-id (software-type) (machine-type)))))
 
 (-> release-archive--validate-platform () null)
 (defun release-archive--validate-platform ()
