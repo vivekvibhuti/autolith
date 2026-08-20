@@ -167,7 +167,7 @@ fi
 
 required_commands="bash curl git grep openssl tar"
 case $platform in
-  *-linux) required_commands="$required_commands bwrap" ;;
+  *-linux*) required_commands="$required_commands bwrap" ;;
 esac
 for command in $required_commands; do
   command -v "$command" >/dev/null 2>&1 ||
