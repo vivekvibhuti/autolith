@@ -238,7 +238,11 @@ rather than failing, so existence needs the following stat first."
   (release-archive--run
    (release-archive--identity-git-command
     source-root
-    '("init" "--quiet" "--initial-branch=master" "--template=")))
+    '("init" "--quiet" "--template=")))
+  (release-archive--run
+   (release-archive--identity-git-command
+    source-root
+    '("symbolic-ref" "HEAD" "refs/heads/master")))
   (dolist (setting
            '(("user.name" "Autolith release build")
              ("user.email" "release-build@localhost")

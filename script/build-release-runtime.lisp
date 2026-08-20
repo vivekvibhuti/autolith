@@ -67,7 +67,7 @@
                "Require ARCHIVE to match EXPECTED-SHA256."
                (cond
                  ((command-available-p "sha256sum")
-                  (run (list "sha256sum" "--check" "--status" "-")
+                  (run (list "sha256sum" "-c" "-s" "-")
                        :output nil
                        :error-output ':output
                        :directory temporary-root
@@ -77,7 +77,7 @@
                                 expected-sha256
                                 (file-namestring archive)))))
                  ((command-available-p "shasum")
-                  (run (list "shasum" "-a" "256" "--check" "--status" "-")
+                  (run (list "shasum" "-a" "256" "-c" "-s" "-")
                        :output nil
                        :error-output ':output
                        :directory temporary-root

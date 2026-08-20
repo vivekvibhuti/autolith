@@ -145,7 +145,7 @@ jobs:
       - name: Package Linux musl release
         run: |
           docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c "
-            apk add --no-cache bash build-base ca-certificates cmake curl git grep \
+            apk add --no-cache bash build-base ca-certificates cmake coreutils curl git grep \
               icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo && \
             git config --global --add safe.directory '*' && \
             AUTOLITH_RELEASE_PLATFORM=x86_64-linux-musl AUTOLITH_LIBC=musl AUTOLITH_HOST_BOOTSTRAP=1 ./script/ci-package-release dist/
@@ -171,7 +171,7 @@ jobs:
       - name: Package Linux musl release
         run: |
           docker run --rm -v "$PWD":/workspace -w /workspace alpine:latest sh -c "
-            apk add --no-cache bash build-base ca-certificates cmake curl git grep \
+            apk add --no-cache bash build-base ca-certificates cmake coreutils curl git grep \
               icu-dev openssl-dev zlib-dev zstd-dev pkgconfig sbcl bubblewrap rust cargo && \
             git config --global --add safe.directory '*' && \
             AUTOLITH_RELEASE_PLATFORM=aarch64-linux-musl AUTOLITH_LIBC=musl AUTOLITH_HOST_BOOTSTRAP=1 ./script/ci-package-release dist/
