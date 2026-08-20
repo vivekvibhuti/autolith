@@ -65,40 +65,34 @@
 
 (check-archive (archive expected-sha256)
                "Require ARCHIVE to match EXPECTED-SHA256."
-               (cond
-                 ((command-available-p "sha256sum")
-                  (run (list "sha256sum" "-c" "-s" "-")
-                       :output nil
-                       :error-output ':output
-                       :directory temporary-root
-                       :input
-                       (make-string-input-stream
-                        (format nil "~A  ~A~%"
-                                expected-sha256
-                                (file-namestring archive)))))
-                 ((command-available-p "shasum")
-                  (run (list "shasum" "-a" "256" "-c" "-s" "-")
-                       :output nil
-                       :error-output ':output
-                       :directory temporary-root
-                       :input
-                       (make-string-input-stream
-                        (format nil "~A  ~A~%"
-                                expected-sha256
-                                (file-namestring archive)))))
-                 ((command-available-p "sha256")
-                  (let ((actual
-                          (string-trim
-                           '(#\Space #\Tab #\Newline #\Return)
+               (let ((actual
+                       (string-trim
+                        '(#\Space #\Tab #\Newline #\Return)
+                        (cond
+                          ((command-available-p "sha256sum")
+                           (first (uiop:split-string
+                                   (run (list "sha256sum" (namestring archive))
+                                        :output ':string
+                                        :error-output ':output
+                                        :directory temporary-root)
+                                   :separator '(#\Space #\Tab))))
+                          ((command-available-p "shasum")
+                           (first (uiop:split-string
+                                   (run (list "shasum" "-a" "256" (namestring archive))
+                                        :output ':string
+                                        :error-output ':output
+                                        :directory temporary-root)
+                                   :separator '(#\Space #\Tab))))
+                          ((command-available-p "sha256")
                            (run (list "sha256" "-q" (file-namestring archive))
                                 :output ':string
                                 :error-output ':output
-                                :directory temporary-root))))
-                    (unless (string-equal actual expected-sha256)
-                      (fail "~A does not match the expected SHA-256."
-                            (file-namestring archive)))))
-                 (t
-                  (fail "sha256sum, shasum, or sha256 is required."))))
+                                :directory temporary-root))
+                          (t
+                           (fail "sha256sum, shasum, or sha256 is required."))))))
+                 (unless (string-equal actual expected-sha256)
+                   (fail "~A does not match the expected SHA-256."
+                         (file-namestring archive)))))
 
              (runtime-version (command)
                "Return the implementation version reported by SBCL COMMAND."
