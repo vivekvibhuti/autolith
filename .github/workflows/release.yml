@@ -38,16 +38,30 @@ jobs:
     name: Package Linux x86-64
     needs: publish-metadata
     runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v5
-
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes \
             bubblewrap build-essential ca-certificates cmake curl git \
-            libicu-dev libssl-dev libz-dev libzstd-dev pkg-config
+            libicu-dev libssl-dev libz-dev libzstd-dev pkg-config sbcl
+          mkdir -p -m 755 /etc/apt/keyrings
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
+            tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+          chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" |
+            tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes gh
+          git config --system --add safe.directory '*'
+
+      - uses: actions/checkout@v5
+
+      - name: Configure safe directory
+        run: git config --global --add safe.directory '*'
 
       - name: Install Rust
         run: |
@@ -73,7 +87,7 @@ jobs:
     needs: publish-metadata
     runs-on: ubuntu-24.04-arm
     container:
-      image: ubuntu:22.04
+      image: ubuntu:20.04
     timeout-minutes: 90
     steps:
       - name: Install system dependencies
